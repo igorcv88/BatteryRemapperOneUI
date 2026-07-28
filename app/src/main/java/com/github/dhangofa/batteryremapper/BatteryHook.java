@@ -1,4 +1,4 @@
-package com.github.dhangofa.batteryremapper;
+package com.igcv.batteryremapper;
 
 import android.content.Intent;
 import android.os.BatteryManager;
