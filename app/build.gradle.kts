@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.github.dhangofa.batteryremapper"
+    namespace = "com.igcv.batteryremapper"
     compileSdk = 34
 
    defaultConfig {
-        applicationId = "com.github.dhangofa.batteryremapper"
+        applicationId = "com.igcv.batteryremapper"
         minSdk = 29
         targetSdk = 34
         
