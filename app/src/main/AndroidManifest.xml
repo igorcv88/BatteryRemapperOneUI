@@ -3,24 +3,25 @@
 
     <application
         android:allowBackup="false"
-        android:label="Battery Remapper"
+        android:label="BatteryRemapper OneUI"
         android:supportsRtl="true">
-        
+
         <meta-data
             android:name="xposedmodule"
             android:value="true" />
-            
+
         <meta-data
             android:name="xposedscope"
             android:resource="@array/xposedscope" />
-            
+
         <meta-data
             android:name="xposeddescription"
-            android:value="Remaps system UI battery scale from physical 20%-80% into 0%-100% display layer." />
-            
+            android:value="Safe One UI fork that visually remaps physical 20%-80% into displayed 10%-100%, without forced shutdown or Battery Saver automation." />
+
         <meta-data
             android:name="xposedminversion"
             android:value="82" />
+
     </application>
 
 </manifest>
