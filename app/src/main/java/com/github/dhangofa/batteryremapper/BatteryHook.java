@@ -1,15 +1,10 @@
 package com.github.dhangofa.batteryremapper;
 
-import android.app.AlertDialog;
 import android.app.AndroidAppHelper;
 import android.content.Context;
 import android.content.Intent;
 import android.os.BatteryManager;
 import android.os.Bundle;
-import android.os.CountDownTimer;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.WindowManager;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -18,10 +13,6 @@ import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
 public class BatteryHook implements IXposedHookLoadPackage {
-
-    private static boolean isShuttingDown = false;
-    private static AlertDialog shutdownDialog = null;
-    private static CountDownTimer shutdownTimer = null;
     
     // -1 = Neutral/Unknown, 0 = Force OFF, 1 = Force ON
     private static int appliedSaverState = -1;      
@@ -53,11 +44,8 @@ public class BatteryHook implements IXposedHookLoadPackage {
                         if (context != null) {
                             handleBatterySaverLogic(context, displayedLevel, plugged);
                         }
-
-                        // 2. SHUTDOWN TIMER LOGIC (Based on physical level)
-                        handleShutdownLogic(originalLevel, plugged);
                         
-                        // 3. APPLY VISUAL SPOOF
+                        // 2. APPLY VISUAL SPOOF
                         param.setResult(displayedLevel);
                     }
                 }
@@ -95,17 +83,6 @@ public class BatteryHook implements IXposedHookLoadPackage {
         // Levels 21-50: Do nothing (Maintain state)
     }
 
-    private void handleShutdownLogic(int originalLevel, int plugged) {
-        if (originalLevel <= 20 && plugged == 0) {
-            if (!isShuttingDown) {
-                isShuttingDown = true;
-                startCountdown();
-            }
-        } else {
-            if (isShuttingDown) cancelCountdown();
-        }
-    }
-
     private void setBatterySaver(Context context, boolean enable) {
         try {
             // 1. Native API
@@ -125,83 +102,14 @@ public class BatteryHook implements IXposedHookLoadPackage {
         }
     }
 
-    private void startCountdown() {
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Context context = AndroidAppHelper.currentApplication();
-                    if (context == null) return;
-
-                    AlertDialog.Builder builder = new AlertDialog.Builder(context, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-                    builder.setTitle("Battery Depleted");
-                    builder.setMessage("Device will shut down in 30 seconds.\nPlug in charger to cancel.");
-                    builder.setCancelable(false);
-                    
-                    shutdownDialog = builder.create();
-                    shutdownDialog.getWindow().setType(WindowManager.LayoutParams.TYPE_SYSTEM_ERROR);
-                    shutdownDialog.show();
-
-                    shutdownTimer = new CountDownTimer(30000, 1000) {
-                        @Override
-                        public void onTick(long millisUntilFinished) {
-                            if (shutdownDialog != null && shutdownDialog.isShowing()) {
-                                shutdownDialog.setMessage("Device will shut down in " + (millisUntilFinished / 1000) + " seconds.\nPlug in charger to cancel.");
-                            }
-                        }
-
-                        @Override
-                        public void onFinish() {
-                            cancelCountdown();
-                            triggerShutdown();
-                        }
-                    }.start();
-                } catch (Throwable t) {
-                    XposedBridge.log("BatteryRemapper UI Failure: " + t.getMessage());
-                    triggerShutdown(); 
-                }
-            }
-        });
-    }
-
-    private void cancelCountdown() {
-        isShuttingDown = false;
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
-            @Override
-            public void run() {
-                if (shutdownTimer != null) {
-                    shutdownTimer.cancel();
-                    shutdownTimer = null;
-                }
-                if (shutdownDialog != null) {
-                    if (shutdownDialog.isShowing()) {
-                        shutdownDialog.dismiss();
-                    }
-                    shutdownDialog = null;
-                }
-            }
-        });
-    }
-
-    private void triggerShutdown() {
-        try {
-            Context context = AndroidAppHelper.currentApplication();
-            if (context != null) {
-                Intent intent = new Intent("com.android.internal.intent.action.REQUEST_SHUTDOWN");
-                intent.putExtra("android.intent.extra.KEY_CONFIRM", false);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-                XposedBridge.log("BatteryRemapper: Executed shutdown.");
-            }
-        } catch (Throwable t) {
-            XposedBridge.log("BatteryRemapper Shutdown Failure: " + t.getMessage());
-            isShuttingDown = false;
-        }
-    }
-
     private int remapBattery(int physicalLevel) {
-        if (physicalLevel <= 20) return 0;
-        if (physicalLevel >= 80) return 100;
-        return Math.round((float)(physicalLevel - 20) * 100f / 60f);
+        int level = Math.max(0, Math.min(100, physicalLevel));
+        if (physicalLevel <= 20) {
+            return Math.round(level*10f/20f);
+        }
+        if (physicalLevel >= 80) {
+            return 100;
+        }
+        return 10 + Math.round((level - 20) * 90f / 60f);
     }
 }
