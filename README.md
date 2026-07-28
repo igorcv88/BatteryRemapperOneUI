@@ -1,6 +1,5 @@
-BatteryRemapper OneUI — Safe Fork
+BatteryRemapper OneUI — Safe
 
-«[!IMPORTANT]
 This is an independent safety-focused fork of "Dhangofa/BatteryRemapper" (https://github.com/Dhangofa/BatteryRemapper).
 
 Unlike the upstream module, this fork does not shut down the device at 20% physical battery and does not control Battery Saver.
