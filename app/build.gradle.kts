@@ -4,16 +4,16 @@ plugins {
 
 android {
     namespace = "com.igcv.batteryremapper"
-    compileSdk = 34
+    compileSdk = 37
 
-   defaultConfig {
+    defaultConfig {
         applicationId = "com.igcv.batteryremapper"
         minSdk = 29
         targetSdk = 34
-        
+
         // Dynamic versioning using run_number from CI
         val runNumber = project.findProperty("versionCode")?.toString()?.toInt() ?: 1
-        
+
         versionCode = runNumber
         versionName = "1.0.$runNumber"
     }
@@ -24,10 +24,12 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
+
     packaging {
         resources { merges += "META-INF/xposed/*" }
     }

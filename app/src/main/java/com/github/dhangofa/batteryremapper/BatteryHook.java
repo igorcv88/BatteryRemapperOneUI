@@ -18,6 +18,10 @@ public class BatteryHook extends XposedModule {
 
     private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
     private final AtomicInteger fullLevel = new AtomicInteger(BatteryMapping.DEFAULT_FULL_LEVEL);
+    private final SharedPreferences.OnSharedPreferenceChangeListener preferenceListener =
+            (prefs, key) -> {
+                if (KEY_FULL_LEVEL.equals(key)) updateFullLevel();
+            };
     private SharedPreferences preferences;
 
     @Override
@@ -25,13 +29,9 @@ public class BatteryHook extends XposedModule {
         if (!SYSTEM_UI.equals(param.getPackageName()) || !param.isFirstPackage()) return;
         if (!hookInstalled.compareAndSet(false, true)) return;
 
-        try {
-            preferences = getRemotePreferences(PREFERENCES_GROUP);
-            updateFullLevel();
-            preferences.registerOnSharedPreferenceChangeListener((prefs, key) -> {
-                if (KEY_FULL_LEVEL.equals(key)) updateFullLevel();
-            });
+        initializePreferences();
 
+        try {
             Method getIntExtra = Intent.class.getDeclaredMethod(
                     "getIntExtra", String.class, int.class);
             hook(getIntExtra).intercept(chain -> {
@@ -51,7 +51,23 @@ public class BatteryHook extends XposedModule {
         }
     }
 
+    private void initializePreferences() {
+        try {
+            preferences = getRemotePreferences(PREFERENCES_GROUP);
+            updateFullLevel();
+            preferences.registerOnSharedPreferenceChangeListener(preferenceListener);
+        } catch (Throwable throwable) {
+            preferences = null;
+            fullLevel.set(BatteryMapping.DEFAULT_FULL_LEVEL);
+            log(Log.WARN, TAG,
+                    "Remote preferences unavailable; using default full level="
+                            + BatteryMapping.DEFAULT_FULL_LEVEL,
+                    throwable);
+        }
+    }
+
     private void updateFullLevel() {
+        if (preferences == null) return;
         int stored = preferences.getInt(KEY_FULL_LEVEL, BatteryMapping.DEFAULT_FULL_LEVEL);
         int sanitized = BatteryMapping.sanitizeFullLevel(stored);
         fullLevel.set(sanitized);

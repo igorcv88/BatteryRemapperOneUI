@@ -25,14 +25,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Gradle 8.2
+      - name: Set up Gradle 9.5.1
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "8.2"
+          gradle-version: "9.5.1"
 
-      - name: Build unsigned release APK
+      - name: Test and build unsigned release APK
         run: |
-          gradle assembleRelease \
+          gradle test assembleRelease \
             -PversionCode="${{ github.run_number }}" \
             --no-daemon
 
