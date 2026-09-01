@@ -1,0 +1,38 @@
+name: Remove legacy Actions artifacts
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Delete every Actions artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          IDS="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" --jq '.artifacts[].id')"
+          if [[ -z "$IDS" ]]; then
+            echo "No Actions artifacts found."
+            exit 0
+          fi
+          while IFS= read -r id; do
+            [[ -z "$id" ]] && continue
+            echo "Deleting artifact $id"
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${id}"
+          done <<< "$IDS"
+
+          REMAINING="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" --jq '.artifacts[].id')"
+          if [[ -n "$REMAINING" ]]; then
+            echo "Artifacts remain after cleanup:" >&2
+            echo "$REMAINING" >&2
+            exit 1
+          fi
+          echo "All Actions artifacts deleted."

@@ -11,11 +11,13 @@ android {
         minSdk = 29
         targetSdk = 34
 
-        // Dynamic versioning using run_number from CI
-        val runNumber = project.findProperty("versionCode")?.toString()?.toInt() ?: 1
+        val releaseVersionCode = project.findProperty("releaseVersionCode")
+            ?.toString()?.toIntOrNull() ?: 1
+        val releaseVersionName = project.findProperty("releaseVersionName")
+            ?.toString()?.takeIf { it.isNotBlank() } ?: "1.0.0"
 
-        versionCode = runNumber
-        versionName = "1.0.$runNumber"
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
     }
 
     buildTypes {
