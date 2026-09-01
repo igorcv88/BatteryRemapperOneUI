@@ -38,5 +38,6 @@ android {
 dependencies {
     compileOnly("io.github.libxposed:api:102.0.0")
     implementation("io.github.libxposed:service:102.0.0")
+    compileOnly("androidx.annotation:annotation:1.9.1")
     testImplementation("junit:junit:4.13.2")
 }

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BatteryRemapper OneUI</string>
-    <string name="module_description">Remap the battery percentage displayed by Samsung SystemUI.</string>
-    <string name="title">BatteryRemapper OneUI</string>
-    <string name="explanation">Choose which physical battery level SystemUI should display as 100%. Physical 0% through 5% stays unchanged.</string>
+    <string name="module_description">Remaps the SystemUI battery percentage with a configurable full-charge level.</string>
+    <string name="title">Battery percentage remapping</string>
+    <string name="explanation" formatted="false">Physical 5% always displays as 5%. The range from 5% to the selected full level is stretched up to displayed 100%.</string>
     <string name="full_level_label">Display 100% at physical:</string>
-    <string name="full_80">80%</string>
-    <string name="full_85">85%</string>
-    <string name="full_90">90%</string>
+    <string name="full_80" formatted="false">80% (Samsung Maximum protection)</string>
+    <string name="full_85" formatted="false">85%</string>
+    <string name="full_90" formatted="false">90%</string>
     <string name="framework_unavailable">Modern Xposed service unavailable. Enable the module and use a framework with API 101 or newer.</string>
     <string name="framework_remote_unavailable">The connected Xposed framework does not provide remote preferences, so the full-level setting cannot be changed from the app.</string>
     <string name="framework_connected">Connected to %1$s · API %2$d</string>
