@@ -1,95 +1,60 @@
 package com.igcv.batteryremapper;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.BatteryManager;
-
+import android.util.Log;
+import androidx.annotation.NonNull;
+import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import io.github.libxposed.api.XposedModule;
 
-import de.robv.android.xposed.IXposedHookLoadPackage;
-import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
+public class BatteryHook extends XposedModule {
+    static final String PREFERENCES_GROUP = "battery_mapping";
+    static final String KEY_FULL_LEVEL = "full_level";
+    private static final String SYSTEM_UI = "com.android.systemui";
+    private static final String TAG = "BatteryRemapper";
 
-public class BatteryHook implements IXposedHookLoadPackage {
-
-    private static final AtomicBoolean HOOK_INSTALLED = new AtomicBoolean(false);
+    private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
+    private final AtomicInteger fullLevel = new AtomicInteger(BatteryMapping.DEFAULT_FULL_LEVEL);
+    private SharedPreferences preferences;
 
     @Override
-    public void handleLoadPackage(LoadPackageParam lpparam) throws Throwable {
-
-        // Apply visual battery remapping only inside SystemUI.
-        if (!"com.android.systemui".equals(lpparam.packageName)) {
-            return;
-        }
-
-        // Vector may invoke the legacy module entry point more than once for the
-        // same SystemUI process. Registering the hook twice remaps the already
-        // remapped value a second time (for example, physical 57 -> 66 -> 79).
-        if (!HOOK_INSTALLED.compareAndSet(false, true)) {
-            XposedBridge.log(
-                    "BatteryRemapper: hook already installed, skipping."
-            );
-            return;
-        }
+    public void onPackageReady(@NonNull PackageReadyParam param) {
+        if (!SYSTEM_UI.equals(param.getPackageName()) || !param.isFirstPackage()) return;
+        if (!hookInstalled.compareAndSet(false, true)) return;
 
         try {
-            XposedHelpers.findAndHookMethod(
-                    Intent.class,
-                    "getIntExtra",
-                    String.class,
-                    int.class,
-                    new XC_MethodHook() {
-                        @Override
-                        protected void afterHookedMethod(MethodHookParam param) {
-                            String key = (String) param.args[0];
+            preferences = getRemotePreferences(PREFERENCES_GROUP);
+            updateFullLevel();
+            preferences.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+                if (KEY_FULL_LEVEL.equals(key)) updateFullLevel();
+            });
 
-                            if (!BatteryManager.EXTRA_LEVEL.equals(key)) {
-                                return;
-                            }
+            Method getIntExtra = Intent.class.getDeclaredMethod(
+                    "getIntExtra", String.class, int.class);
+            hook(getIntExtra).intercept(chain -> {
+                Object result = chain.proceed();
+                if (!(result instanceof Integer)
+                        || !BatteryManager.EXTRA_LEVEL.equals(chain.getArg(0))) return result;
 
-                            // Only alter the actual sticky battery broadcast.
-                            // This avoids touching unrelated SystemUI intents that
-                            // happen to use an extra named "level".
-                            Intent intent = (Intent) param.thisObject;
-                            if (!Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
-                                return;
-                            }
+                Intent intent = (Intent) chain.getThisObject();
+                if (!Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) return result;
+                return BatteryMapping.remap((Integer) result, fullLevel.get());
+            });
 
-                            int originalLevel = (Integer) param.getResult();
-                            int displayedLevel = remapBattery(originalLevel);
-
-                            param.setResult(displayedLevel);
-                        }
-                    }
-            );
-
-            XposedBridge.log(
-                    "BatteryRemapper: SystemUI hooked successfully."
-            );
-        } catch (Throwable t) {
-            // Allow a later callback to retry if installation itself failed.
-            HOOK_INSTALLED.set(false);
-            XposedBridge.log(
-                    "BatteryRemapper error: " + t
-            );
+            log(Log.INFO, TAG, "SystemUI hook installed; full level=" + fullLevel.get());
+        } catch (Throwable throwable) {
+            hookInstalled.set(false);
+            log(Log.ERROR, TAG, "Unable to install SystemUI hook", throwable);
         }
     }
 
-    private int remapBattery(int physicalLevel) {
-        int level = Math.max(0, Math.min(100, physicalLevel));
-
-        // Physical 0–20% becomes displayed 0–10%.
-        if (level <= 20) {
-            return Math.round(level * 10f / 20f);
-        }
-
-        // Physical 80–100% becomes displayed 100%.
-        if (level >= 80) {
-            return 100;
-        }
-
-        // Physical 20–80% becomes displayed 10–100%.
-        return 10 + Math.round((level - 20) * 90f / 60f);
+    private void updateFullLevel() {
+        int stored = preferences.getInt(KEY_FULL_LEVEL, BatteryMapping.DEFAULT_FULL_LEVEL);
+        int sanitized = BatteryMapping.sanitizeFullLevel(stored);
+        fullLevel.set(sanitized);
+        log(Log.INFO, TAG, "Full level changed to " + sanitized);
     }
 }

@@ -2,26 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
+        android:name=".BatteryRemapperApp"
         android:allowBackup="false"
+        android:description="@string/module_description"
         android:label="BatteryRemapper OneUI"
-        android:supportsRtl="true">
-
-        <meta-data
-            android:name="xposedmodule"
-            android:value="true" />
-
-        <meta-data
-            android:name="xposedscope"
-            android:resource="@array/xposedscope" />
-
-        <meta-data
-            android:name="xposeddescription"
-            android:value="Safe One UI fork that visually remaps physical 20%-80% into displayed 10%-100%, without forced shutdown or Battery Saver automation." />
-
-        <meta-data
-            android:name="xposedminversion"
-            android:value="82" />
-
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
